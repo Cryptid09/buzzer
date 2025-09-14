@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Buzzer System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anton&family=Roboto:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .title {
+            font-family: 'Anton', sans-serif;
+            letter-spacing: 1px;
+        }
+        
+        .buzzer {
+            transition: all 0.2s ease;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .buzzer:active {
+            transform: scale(0.95);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .winner-flash {
+            animation: winnerFlash 0.5s infinite alternate;
+        }
+        
+        @keyframes winnerFlash {
+            from { background-color: #10B981; }
+            to { background-color: #059669; }
+        }
+        
+        .leaderboard-entry {
+            transition: all 0.3s ease;
+        }
+        
+        .new-winner {
+            animation: newWinner 1s ease;
+        }
+        
+        @keyframes newWinner {
+            0% { transform: scale(1); background-color: #fff; }
+            50% { transform: scale(1.05); background-color: #10B981; color: white; }
+            100% { transform: scale(1); background-color: #fff; }
+        }
+        
+        .modal {
+            transition: opacity 0.3s ease;
+        }
+        
+        .admin-panel {
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body class="text-gray-100 min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="container mx-auto px-4 py-6 text-center">
+        <h1 class="title text-4xl md:text-5xl text-yellow-400 mb-2">QUIZ BUZZER</h1>
+        <p class="text-lg text-gray-300">Fastest finger wins! Connect via local network</p>
+        <button id="admin-login-btn" class="mt-4 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg">
+            <i class="fas fa-lock mr-2"></i>Admin Login
+        </button>
+    </header>
+
+    <main class="flex-1 container mx-auto px-4 py-6">
+        <!-- Game State & Admin Controls -->
+        <div class="bg-blue-900/50 rounded-xl p-6 mb-8 shadow-lg">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-yellow-400">Game Controls</h2>
+                    <p class="text-gray-300" id="game-status">Status: Buzzer Locked</p>
+                </div>
+                <div class="flex gap-4">
+                    <button id="reset-btn" class="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold transition">
+                        Reset Buzzers
+                    </button>
+                    <button id="start-btn" class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-semibold transition">
+                        Start Buzzer
+                    </button>
+                    <button id="lock-btn" class="bg-yellow-600 hover:bg-yellow-700 px-6 py-3 rounded-lg font-semibold transition">
+                        Lock Buzzers
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Buzzer Section -->
+            <div class="lg:col-span-2">
+                <div class="bg-blue-900/50 rounded-xl p-6 shadow-lg h-full">
+                    <h2 class="text-2xl font-bold text-yellow-400 mb-6 text-center">Buzzer</h2>
+                    
+                    <div class="flex flex-col items-center justify-center">
+                        <div class="relative w-64 h-64 md:w-80 md:h-80 mb-8">
+                            <div id="buzzer" class="buzzer w-full h-full bg-gray-600 rounded-full flex items-center justify-center cursor-not-allowed">
+                                <span class="text-white text-2xl md:text-3xl font-bold">BUZZ LOCKED</span>
+                            </div>
+                            <div id="timer" class="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xl font-bold text-yellow-400">
+                                0.000s
+                            </div>
+                        </div>
+                        
+                        <div class="w-full max-w-md">
+                            <div class="flex items-center justify-between mb-4">
+                                <label for="player-name" class="text-lg">Your Name:</label>
+                                <input type="text" id="player-name" placeholder="Enter your name" class="bg-blue-800/50 border border-blue-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                            </div>
+                            <button id="register-btn" class="w-full bg-green-600 hover:bg-green-700 py-3 rounded-lg font-semibold transition">
+                                Register Player
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Leaderboard Section -->
+            <div>
+                <div class="bg-blue-900/50 rounded-xl p-6 shadow-lg h-full">
+                    <h2 class="text-2xl font-bold text-yellow-400 mb-6 text-center">Leaderboard</h2>
+                    
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold text-yellow-300 mb-2">Current Winner</h3>
+                        <div id="current-winner" class="bg-blue-800/50 rounded-lg p-4 text-center">
+                            <div class="text-gray-300">No winner yet</div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-lg font-semibold text-yellow-300 mb-2">Top Players</h3>
+                        <div id="leaderboard" class="space-y-3">
+                            <div class="text-gray-300 text-center">No scores yet</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Connected Players -->
+        <div class="mt-8 bg-blue-900/50 rounded-xl p-6 shadow-lg">
+            <h2 class="text-2xl font-bold text-yellow-400 mb-4 text-center">Connected Players</h2>
+            <div id="connected-players" class="flex flex-wrap gap-3 justify-center">
+                <div class="bg-gray-600/50 rounded-lg px-4 py-2">No players connected</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="container mx-auto px-4 py-6 text-center text-gray-400 mt-8">
+        <p>Quiz Buzzer System - Hosted locally on your network</p>
+    </footer>
+
+    <!-- Admin Login Modal -->
+    <div id="admin-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden modal">
+        <div class="admin-panel bg-gray-800 rounded-xl p-8 w-full max-w-md">
+            <h2 class="text-2xl font-bold text-yellow-400 mb-6 text-center">Admin Login</h2>
+            <div class="mb-6">
+                <label for="admin-username" class="block text-lg mb-2">Username:</label>
+                <input type="text" id="admin-username" placeholder="Admin" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+            </div>
+            <div class="mb-6">
+                <label for="admin-password" class="block text-lg mb-2">Password:</label>
+                <input type="password" id="admin-password" placeholder="Enter password" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+            </div>
+            <div class="flex gap-4">
+                <button id="admin-cancel" class="flex-1 bg-gray-600 hover:bg-gray-500 py-3 rounded-lg font-semibold transition">
+                    Cancel
+                </button>
+                <button id="admin-login" class="flex-1 bg-green-600 hover:bg-green-700 py-3 rounded-lg font-semibold transition">
+                    Login
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        const gameState = {
+            buzzersLocked: true,
+            players: {},
+            winner: null,
+            startTime: null,
+            adminLoggedIn: false
+        };
+
+        // DOM elements
+        const buzzer = document.getElementById('buzzer');
+        const timer = document.getElementById('timer');
+        const resetBtn = document.getElementById('reset-btn');
+        const lockBtn = document.getElementById('lock-btn');
+        const startBtn = document.getElementById('start-btn');
+        const gameStatus = document.getElementById('game-status');
+        const playerNameInput = document.getElementById('player-name');
+        const registerBtn = document.getElementById('register-btn');
+        const currentWinner = document.getElementById('current-winner');
+        const leaderboard = document.getElementById('leaderboard');
+        const connectedPlayers = document.getElementById('connected-players');
+        const adminLoginBtn = document.getElementById('admin-login-btn');
+        const adminModal = document.getElementById('admin-modal');
+        const adminCancel = document.getElementById('admin-cancel');
+        const adminLogin = document.getElementById('admin-login');
+        const adminUsername = document.getElementById('admin-username');
+        const adminPassword = document.getElementById('admin-password');
+
+        // Initialize game
+        function initGame() {
+            updateLeaderboard();
+            updateConnectedPlayers();
+            updateGameStatus();
+            
+            // Event listeners
+            buzzer.addEventListener('click', handleBuzzer);
+            resetBtn.addEventListener('click', resetBuzzers);
+            lockBtn.addEventListener('click', lockBuzzers);
+            startBtn.addEventListener('click', startBuzzer);
+            registerBtn.addEventListener('click', registerPlayer);
+            adminLoginBtn.addEventListener('click', showAdminLogin);
+            adminCancel.addEventListener('click', hideAdminLogin);
+            adminLogin.addEventListener('click', handleAdminLogin);
+        }
+
+        // Handle buzzer press
+        function handleBuzzer() {
+            if (gameState.buzzersLocked) {
+                alert("Buzzers are locked! Wait for the admin to start the buzzer.");
+                return;
+            }
+            
+            if (!playerNameInput.value.trim()) {
+                alert("Please enter your name first!");
+                return;
+            }
+            
+            // Calculate reaction time
+            const currentTime = new Date().getTime();
+            const reactionTime = (currentTime - gameState.startTime) / 1000;
+            timer.textContent = reactionTime.toFixed(3) + 's';
+            
+            // Add player if not exists
+            if (!gameState.players[playerNameInput.value]) {
+                gameState.players[playerNameInput.value] = {
+                    buzzTime: reactionTime,
+                    connected: true
+                };
+                updateConnectedPlayers();
+            } else {
+                // Update existing player's time if faster
+                if (reactionTime < gameState.players[playerNameInput.value].buzzTime) {
+                    gameState.players[playerNameInput.value].buzzTime = reactionTime;
+                }
+            }
+            
+            // Check if this is the fastest time
+            let isWinner = true;
+            for (const player in gameState.players) {
+                if (gameState.players[player].buzzTime < reactionTime) {
+                    isWinner = false;
+                    break;
+                }
+            }
+            
+            if (isWinner) {
+                gameState.winner = playerNameInput.value;
+                currentWinner.innerHTML = `
+                    <div class="winner-flash rounded-lg p-2 font-bold">${playerNameInput.value} - ${reactionTime.toFixed(3)}s</div>
+                `;
+            }
+            
+            updateLeaderboard();
+            
+            // Visual feedback
+            buzzer.classList.remove('bg-red-600', 'pulse');
+            buzzer.classList.add('bg-blue-600');
+            buzzer.innerHTML = '<span class="text-white text-2xl md:text-3xl font-bold">BUZZED!</span>';
+            
+            // Lock buzzers after press
+            gameState.buzzersLocked = true;
+            updateGameStatus();
+        }
+
+        // Reset all buzzers
+        function resetBuzzers() {
+            if (!gameState.adminLoggedIn) {
+                alert("Only admin can reset buzzers!");
+                return;
+            }
+            
+            gameState.buzzersLocked = true;
+            gameState.winner = null;
+            timer.textContent = '0.000s';
+            currentWinner.innerHTML = '<div class="text-gray-300">No winner yet</div>';
+            
+            buzzer.classList.remove('bg-red-600', 'pulse', 'bg-blue-600');
+            buzzer.classList.add('bg-gray-600');
+            buzzer.innerHTML = '<span class="text-white text-2xl md:text-3xl font-bold">BUZZ LOCKED</span>';
+            
+            // Reset all player times
+            for (const player in gameState.players) {
+                gameState.players[player].buzzTime = Infinity;
+            }
+            
+            updateGameStatus();
+            updateLeaderboard();
+        }
+
+        // Lock buzzers
+        function lockBuzzers() {
+            if (!gameState.adminLoggedIn) {
+                alert("Only admin can lock buzzers!");
+                return;
+            }
+            
+            gameState.buzzersLocked = true;
+            buzzer.classList.remove('bg-red-600', 'pulse');
+            buzzer.classList.add('bg-gray-600');
+            buzzer.innerHTML = '<span class="text-white text-2xl md:text-3xl font-bold">BUZZ LOCKED</span>';
+            
+            updateGameStatus();
+        }
+
+        // Start buzzer
+        function startBuzzer() {
+            if (!gameState.adminLoggedIn) {
+                alert("Only admin can start the buzzer!");
+                return;
+            }
+            
+            gameState.buzzersLocked = false;
+            gameState.startTime = new Date().getTime();
+            
+            buzzer.classList.remove('bg-gray-600', 'bg-blue-600');
+            buzzer.classList.add('bg-red-600', 'pulse');
+            buzzer.innerHTML = '<span class="text-white text-2xl md:text-3xl font-bold">BUZZ NOW!</span>';
+            
+            updateGameStatus();
+        }
+
+        // Update game status display
+        function updateGameStatus() {
+            if (gameState.buzzersLocked) {
+                gameStatus.textContent = 'Status: Buzzer Locked';
+                startBtn.classList.remove('opacity-50');
+                lockBtn.classList.add('opacity-50');
+            } else {
+                gameStatus.textContent = 'Status: Buzzer Active - Press Now!';
+                startBtn.classList.add('opacity-50');
+                lockBtn.classList.remove('opacity-50');
+            }
+            
+            // Show admin controls if logged in
+            if (gameState.adminLoggedIn) {
+                resetBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                lockBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                adminLoginBtn.innerHTML = '<i class="fas fa-user-cog mr-2"></i>Admin';
+                adminLoginBtn.classList.add('bg-yellow-600', 'hover:bg-yellow-700');
+            } else {
+                resetBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                lockBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                adminLoginBtn.innerHTML = '<i class="fas fa-lock mr-2"></i>Admin Login';
+                adminLoginBtn.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+                adminLoginBtn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+            }
+        }
+
+        // Register new player
+        function registerPlayer() {
+            const name = playerNameInput.value.trim();
+            if (!name) {
+                alert("Please enter a name!");
+                return;
+            }
+            
+            if (!gameState.players[name]) {
+                gameState.players[name] = {
+                    buzzTime: Infinity,
+                    connected: true
+                };
+                
+                updateConnectedPlayers();
+                alert(`Player "${name}" registered!`);
+            } else {
+                alert(`Player "${name}" is already registered!`);
+            }
+        }
+
+        // Update leaderboard
+        function updateLeaderboard() {
+            // Convert players object to array and sort by buzz time
+            const playersArray = Object.entries(gameState.players)
+                .filter(([name, data]) => data.buzzTime !== Infinity)
+                .sort((a, b) => a[1].buzzTime - b[1].buzzTime)
+                .slice(0, 5); // Top 5 only
+            
+            leaderboard.innerHTML = '';
+            
+            if (playersArray.length === 0) {
+                leaderboard.innerHTML = '<div class="text-gray-300 text-center">No scores yet</div>';
+                return;
+            }
+            
+            playersArray.forEach(([name, data], index) => {
+                const entry = document.createElement('div');
+                entry.className = `leaderboard-entry bg-blue-800/50 rounded-lg p-3 flex justify-between`;
+                if (name === gameState.winner) {
+                    entry.classList.add('new-winner');
+                }
+                entry.innerHTML = `
+                    <span>${index + 1}. ${name}</span>
+                    <span class="text-yellow-400">${data.buzzTime.toFixed(3)}s</span>
+                `;
+                leaderboard.appendChild(entry);
+            });
+        }
+
+        // Update connected players list
+        function updateConnectedPlayers() {
+            connectedPlayers.innerHTML = '';
+            
+            const players = Object.keys(gameState.players);
+            
+            if (players.length === 0) {
+                connectedPlayers.innerHTML = '<div class="bg-gray-600/50 rounded-lg px-4 py-2">No players connected</div>';
+                return;
+            }
+            
+            players.forEach(player => {
+                const playerEl = document.createElement('div');
+                playerEl.className = 'bg-green-600/50 rounded-lg px-4 py-2';
+                playerEl.textContent = player;
+                connectedPlayers.appendChild(playerEl);
+            });
+        }
+
+        // Show admin login modal
+        function showAdminLogin() {
+            adminModal.classList.remove('hidden');
+        }
+
+        // Hide admin login modal
+        function hideAdminLogin() {
+            adminModal.classList.add('hidden');
+            adminUsername.value = '';
+            adminPassword.value = '';
+        }
+
+        // Handle admin login
+        function handleAdminLogin() {
+            const username = adminUsername.value.trim();
+            const password = adminPassword.value.trim();
+            
+            if (username === 'Admin' && password === 'Admin@#@#') {
+                gameState.adminLoggedIn = true;
+                hideAdminLogin();
+                updateGameStatus();
+                alert('Admin login successful!');
+            } else {
+                alert('Invalid admin credentials!');
+            }
+        }
+
+        // Initialize the game when page loads
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
