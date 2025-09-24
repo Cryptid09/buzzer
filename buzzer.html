@@ -195,8 +195,11 @@
     </div>
 
     <script>
-        // Game state
-        const gameState = {
+        // Initialize Socket.IO connection
+        const socket = io();
+        
+        // Local game state (synchronized with server)
+        let gameState = {
             buzzersLocked: true,
             players: {},
             winner: null,
@@ -223,11 +226,24 @@
         const adminUsername = document.getElementById('admin-username');
         const adminPassword = document.getElementById('admin-password');
 
+        // Socket.IO event listeners
+        socket.on('state', (newState) => {
+            gameState = newState;
+            updateUI();
+        });
+
+        socket.on('admin-login-success', () => {
+            hideAdminLogin();
+            alert('Admin login successful!');
+        });
+
+        socket.on('admin-login-fail', () => {
+            alert('Invalid admin credentials!');
+        });
+
         // Initialize game
         function initGame() {
-            updateLeaderboard();
-            updateConnectedPlayers();
-            updateGameStatus();
+            updateUI();
             
             // Event listeners
             buzzer.addEventListener('click', handleBuzzer);
