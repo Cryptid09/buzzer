@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Buzzer - Access Instructions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anton&family=Roboto:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+        }
+        
+        .title {
+            font-family: 'Anton', sans-serif;
+            letter-spacing: 1px;
+        }
+        
+        .instruction-card {
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .instruction-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .step-number {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .ip-address {
+            font-family: monospace;
+            background-color: #1e293b;
+            padding: 10px 15px;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="text-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="title text-4xl md:text-5xl text-yellow-400 mb-4">QUIZ BUZZER SETUP</h1>
+            <p class="text-xl text-gray-300">How to access from your mobile device</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            <!-- Step 1 -->
+            <div class="instruction-card bg-blue-900/50 rounded-xl p-6">
+                <div class="flex items-center mb-4">
+                    <div class="step-number mr-4">1</div>
+                    <h2 class="text-2xl font-bold text-yellow-400">Find Your PC's IP Address</h2>
+                </div>
+                <p class="text-gray-300 mb-4">You need to find your computer's local IP address:</p>
+                <div class="bg-blue-800/30 rounded-lg p-4 mb-4">
+                    <h3 class="text-lg font-semibold text-green-400 mb-2">On Windows:</h3>
+                    <p class="text-gray-300">Open Command Prompt and type:</p>
+                    <p class="ip-address">ipconfig</p>
+                    <p class="text-gray-300">Look for "IPv4 Address" under your active connection.</p>
+                </div>
+                <div class="bg-blue-800/30 rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-green-400 mb-2">On Mac:</h3>
+                    <p class="text-gray-300">Open System Preferences → Network, or type in Terminal:</p>
+                    <p class="ip-address">ifconfig | grep "inet "</p>
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="instruction-card bg-blue-900/50 rounded-xl p-6">
+                <div class="flex items-center mb-4">
+                    <div class="step-number mr-4">2</div>
+                    <h2 class="text-2xl font-bold text-yellow-400">Start Your Local Server</h2>
+                </div>
+                <p class="text-gray-300 mb-4">Run a local server on your computer:</p>
+                <div class="bg-blue-800/30 rounded-lg p-4 mb-4">
+                    <h3 class="text-lg font-semibold text-green-400 mb-2">Using Python:</h3>
+                    <p class="text-gray-300">Navigate to your project folder and run:</p>
+                    <p class="ip-address">python -m http.server 8000</p>
+                </div>
+                <div class="bg-blue-800/30 rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-green-400 mb-2">Using Node.js:</h3>
+                    <p class="text-gray-300">Install http-server globally, then run:</p>
+                    <p class="ip-address">npx http-server -p 8000</p>
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="instruction-card bg-blue-900/50 rounded-xl p-6">
+                <div class="flex items-center mb-4">
+                    <div class="step-number mr-4">3</div>
+                    <h2 class="text-2xl font-bold text-yellow-400">Connect Your Phone</h2>
+                </div>
+                <p class="text-gray-300 mb-4">Ensure your phone is connected to the same Wi-Fi network as your computer.</p>
+                <div class="bg-blue-800/30 rounded-lg p-4 mb-4">
+                    <h3 class="text-lg font-semibold text-green-400 mb-2">Open Browser on Phone:</h3>
+                    <p class="text-gray-300">Type the following in your mobile browser:</p>
+                    <p class="ip-address">http://<span id="ip-placeholder">YOUR_IP_ADDRESS</span>:8000</p>
+                </div>
+                <div class="text-center mt-4">
+                    <p class="text-gray-300 mb-2">Or scan this QR code to quickly access:</p>
+                    <div class="qr-code mx-auto flex items-center justify-center text-center">
+                        <div>
+                            <i class="fas fa-qrcode text-6xl text-gray-700 mb-2"></i>
+                            <p class="text-xs text-gray-700">QR code will appear after you enter your IP address</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="instruction-card bg-blue-900/50 rounded-xl p-6">
+                <div class="flex items-center mb-4">
+                    <div class="step-number mr-4">4</div>
+                    <h2 class="text-2xl font-bold text-yellow-400">Test the Connection</h2>
+                </div>
+                <p class="text-gray-300 mb-4">Verify that your phone can access the quiz buzzer:</p>
+                <div class="bg-blue-800/30 rounded-lg p-4 mb-4">
+                    <h3 class="text-lg font-semibold text-green-400 mb-2">On Your Phone:</h3>
+                    <p class="text-gray-300">Open the browser and navigate to your computer's IP address with port 8000.</p>
+                    <p class="text-gray-300">You should see the Quiz Buzzer interface.</p>
+                </div>
+                <div class="bg-blue-800/30 rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-green-400 mb-2">Troubleshooting:</h3>
+                    <p class="text-gray-300">If it doesn't work, check your firewall settings to ensure port 8000 is open.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- IP Address Form -->
+        <div class="bg-blue-900/50 rounded-xl p-6 mb-8">
+            <h2 class="text-2xl font-bold text-yellow-400 mb-4 text-center">Enter Your Computer's IP Address</h2>
+            <div class="max-w-md mx-auto">
+                <div class="flex">
+                    <input type="text" id="ip-input" placeholder="192.168.1.100" class="flex-1 bg-blue-800/50 border border-blue-700 rounded-l-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                    <button id="generate-btn" class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-r-lg font-semibold transition">
+                        Generate URL
+                    </button>
+                </div>
+                <div class="mt-4 text-center">
+                    <p class="text-gray-300">Your mobile access URL:</p>
+                    <p id="mobile-url" class="ip-address mt-2">http://:8000</p>
+                    <button id="copy-btn" class="mt-4 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold transition hidden">
+                        <i class="fas fa-copy mr-2"></i>Copy URL
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Test -->
+        <div class="bg-blue-900/50 rounded-xl p-6 text-center">
+            <h2 class="text-2xl font-bold text-yellow-400 mb-4">Quick Connection Test</h2>
+            <p class="text-gray-300 mb-4">Click the button below to test if your server is running correctly:</p>
+            <button id="test-btn" class="bg-yellow-600 hover:bg-yellow-700 px-6 py-3 rounded-lg font-semibold transition pulse">
+                <i class="fas fa-bolt mr-2"></i>Test Server Connection
+            </button>
+            <div id="test-result" class="mt-4"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ipInput = document.getElementById('ip-input');
+            const generateBtn = document.getElementById('generate-btn');
+            const mobileUrl = document.getElementById('mobile-url');
+            const copyBtn = document.getElementById('copy-btn');
+            const testBtn = document.getElementById('test-btn');
+            const testResult = document.getElementById('test-result');
+            
+            // Try to automatically detect the IP address
+            try {
+                // This works in most modern browsers
+                const rtc = new RTCPeerConnection({iceServers:[]});
+                rtc.createDataChannel('');
+                rtc.createOffer().then(offer => rtc.setLocalDescription(offer));
+                rtc.onicecandidate = event => {
+                    if (event.candidate) {
+                        const ip = event.candidate.address;
+                        if (isLocalIP(ip)) {
+                            ipInput.value = ip;
+                            generateUrl();
+                        }
+                    }
+                };
+            } catch (e) {
+                console.log('Could not automatically detect IP address');
+            }
+            
+            function isLocalIP(ip) {
+                return ip.startsWith('192.168.') || 
+                       ip.startsWith('10.') || 
+                       ip.startsWith('172.') ||
+                       ip === 'localhost';
+            }
+            
+            function generateUrl() {
+                const ip = ipInput.value.trim();
+                if (ip) {
+                    mobileUrl.textContent = `http://${ip}:8000`;
+                    copyBtn.classList.remove('hidden');
+                }
+            }
+            
+            generateBtn.addEventListener('click', generateUrl);
+            
+            copyBtn.addEventListener('click', function() {
+                navigator.clipboard.writeText(mobileUrl.textContent)
+                    .then(() => {
+                        const originalText = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Copied!';
+                        setTimeout(() => {
+                            copyBtn.innerHTML = originalText;
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        alert('Failed to copy: ' + err);
+                    });
+            });
+            
+            testBtn.addEventListener('click', function() {
+                const ip = ipInput.value.trim();
+                if (!ip) {
+                    testResult.innerHTML = '<p class="text-red-400">Please enter an IP address first</p>';
+                    return;
+                }
+                
+                testResult.innerHTML = '<p class="text-yellow-400">Testing connection to server...</p>';
+                
+                // Test the server connection
+                fetch(`http://${ip}:8000`)
+                    .then(response => {
+                        if (response.status === 200) {
+                            testResult.innerHTML = '<p class="text-green-400"><i class="fas fa-check-circle mr-2"></i>Server is running successfully!</p>';
+                        } else {
+                            testResult.innerHTML = `<p class="text-red-400"><i class="fas fa-times-circle mr-2"></i>Server responded with status: ${response.status}</p>`;
+                        }
+                    })
+                    .catch(error => {
+                        testResult.innerHTML = `<p class="text-red-400"><i class="fas fa-times-circle mr-2"></i>Could not connect to server: ${error}</p>`;
+                    });
+            });
+            
+            // Initialize with placeholder IP if none detected
+            if (!ipInput.value) {
+                ipInput.placeholder = '192.168.1.100';
+            }
+        });
+    </script>
+</body>
+</html>
