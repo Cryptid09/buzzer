@@ -195,10 +195,10 @@
     </div>
 
     <script>
-        // Initialize Socket.IO connection
+        // Socket.IO connection
         const socket = io();
         
-        // Local game state (synchronized with server)
+        // Local game state (synced with server)
         let gameState = {
             buzzersLocked: true,
             players: {},
@@ -206,6 +206,18 @@
             startTime: null,
             adminLoggedIn: false
         };
+
+        // Local state for this client
+        let isPlayerRegistered = false;
+
+        // Reset registration state
+        function resetRegistrationState() {
+            isPlayerRegistered = false;
+            registerBtn.style.display = 'block';
+            playerNameInput.disabled = false;
+            playerNameInput.style.opacity = '1';
+            playerNameInput.value = '';
+        }
 
         // DOM elements
         const buzzer = document.getElementById('buzzer');
@@ -230,10 +242,21 @@
         socket.on('state', (newState) => {
             gameState = newState;
             updateUI();
+            
+            // Reset registration state when game is reset
+            if (gameState.buzzersLocked && !gameState.winner) {
+                // Check if this is a reset (no winner and locked)
+                const hasAnyScores = Object.values(gameState.players).some(player => player.buzzTime !== Infinity);
+                if (!hasAnyScores) {
+                    resetRegistrationState();
+                }
+            }
         });
 
         socket.on('admin-login-success', () => {
+            gameState.adminLoggedIn = true;
             hideAdminLogin();
+            updateGameStatus();
             alert('Admin login successful!');
         });
 
@@ -263,113 +286,115 @@
                 return;
             }
             
-            if (!playerNameInput.value.trim()) {
+            const name = playerNameInput.value.trim();
+            if (!name) {
                 alert("Please enter your name first!");
                 return;
             }
             
-            // Calculate reaction time
-            const currentTime = new Date().getTime();
-            const reactionTime = (currentTime - gameState.startTime) / 1000;
-            timer.textContent = reactionTime.toFixed(3) + 's';
-            
-            // Add player if not exists
-            if (!gameState.players[playerNameInput.value]) {
-                gameState.players[playerNameInput.value] = {
-                    buzzTime: reactionTime,
-                    connected: true
-                };
-                updateConnectedPlayers();
-            } else {
-                // Update existing player's time if faster
-                if (reactionTime < gameState.players[playerNameInput.value].buzzTime) {
-                    gameState.players[playerNameInput.value].buzzTime = reactionTime;
-                }
+            if (!isPlayerRegistered) {
+                alert("Please register first before buzzing!");
+                return;
             }
             
-            // Check if this is the fastest time
-            let isWinner = true;
-            for (const player in gameState.players) {
-                if (gameState.players[player].buzzTime < reactionTime) {
-                    isWinner = false;
-                    break;
-                }
-            }
-            
-            if (isWinner) {
-                gameState.winner = playerNameInput.value;
-                currentWinner.innerHTML = `
-                    <div class="winner-flash rounded-lg p-2 font-bold">${playerNameInput.value} - ${reactionTime.toFixed(3)}s</div>
-                `;
-            }
-            
-            updateLeaderboard();
-            
-            // Visual feedback
-            buzzer.classList.remove('bg-red-600', 'pulse');
-            buzzer.classList.add('bg-blue-600');
-            buzzer.innerHTML = '<span class="text-white text-2xl md:text-3xl font-bold">BUZZED!</span>';
-            
-            // Lock buzzers after press
-            gameState.buzzersLocked = true;
-            updateGameStatus();
+            // Send buzz event to server
+            socket.emit('buzz', name);
         }
 
         // Reset all buzzers
         function resetBuzzers() {
-            if (!gameState.adminLoggedIn) {
-                alert("Only admin can reset buzzers!");
-                return;
-            }
-            
-            gameState.buzzersLocked = true;
-            gameState.winner = null;
-            timer.textContent = '0.000s';
-            currentWinner.innerHTML = '<div class="text-gray-300">No winner yet</div>';
-            
-            buzzer.classList.remove('bg-red-600', 'pulse', 'bg-blue-600');
-            buzzer.classList.add('bg-gray-600');
-            buzzer.innerHTML = '<span class="text-white text-2xl md:text-3xl font-bold">BUZZ LOCKED</span>';
-            
-            // Reset all player times
-            for (const player in gameState.players) {
-                gameState.players[player].buzzTime = Infinity;
-            }
-            
-            updateGameStatus();
-            updateLeaderboard();
+            socket.emit('reset-buzzers');
         }
 
         // Lock buzzers
         function lockBuzzers() {
-            if (!gameState.adminLoggedIn) {
-                alert("Only admin can lock buzzers!");
-                return;
-            }
-            
-            gameState.buzzersLocked = true;
-            buzzer.classList.remove('bg-red-600', 'pulse');
-            buzzer.classList.add('bg-gray-600');
-            buzzer.innerHTML = '<span class="text-white text-2xl md:text-3xl font-bold">BUZZ LOCKED</span>';
-            
-            updateGameStatus();
+            socket.emit('lock-buzzers');
         }
 
         // Start buzzer
         function startBuzzer() {
-            if (!gameState.adminLoggedIn) {
-                alert("Only admin can start the buzzer!");
+            socket.emit('start-buzzer');
+        }
+
+        // Register new player
+        function registerPlayer() {
+            const name = playerNameInput.value.trim();
+            if (!name) {
+                alert("Please enter a name!");
                 return;
             }
             
-            gameState.buzzersLocked = false;
-            gameState.startTime = new Date().getTime();
+            if (isPlayerRegistered) {
+                alert("You are already registered!");
+                return;
+            }
             
-            buzzer.classList.remove('bg-gray-600', 'bg-blue-600');
-            buzzer.classList.add('bg-red-600', 'pulse');
-            buzzer.innerHTML = '<span class="text-white text-2xl md:text-3xl font-bold">BUZZ NOW!</span>';
+            socket.emit('register', name);
+            isPlayerRegistered = true;
             
+            // Hide registration button and disable name input
+            registerBtn.style.display = 'none';
+            playerNameInput.disabled = true;
+            playerNameInput.style.opacity = '0.6';
+            
+            alert(`Player "${name}" registered!`);
+        }
+
+        // Show admin login modal
+        function showAdminLogin() {
+            adminModal.classList.remove('hidden');
+        }
+
+        // Hide admin login modal
+        function hideAdminLogin() {
+            adminModal.classList.add('hidden');
+            adminUsername.value = '';
+            adminPassword.value = '';
+        }
+
+        // Handle admin login
+        function handleAdminLogin() {
+            const username = adminUsername.value.trim();
+            const password = adminPassword.value.trim();
+            
+            socket.emit('admin-login', { username, password });
+        }
+
+        // Update entire UI based on game state
+        function updateUI() {
+            updateBuzzer();
+            updateTimer();
             updateGameStatus();
+            updateLeaderboard();
+            updateConnectedPlayers();
+            updateCurrentWinner();
+        }
+
+        // Update buzzer appearance
+        function updateBuzzer() {
+            buzzer.classList.remove('bg-red-600', 'pulse', 'bg-blue-600', 'bg-gray-600', 'cursor-not-allowed', 'cursor-pointer');
+            
+            if (gameState.buzzersLocked) {
+                if (gameState.winner) {
+                    buzzer.classList.add('bg-blue-600', 'cursor-not-allowed');
+                    buzzer.innerHTML = '<span class="text-white text-2xl md:text-3xl font-bold">BUZZED!</span>';
+                } else {
+                    buzzer.classList.add('bg-gray-600', 'cursor-not-allowed');
+                    buzzer.innerHTML = '<span class="text-white text-2xl md:text-3xl font-bold">BUZZ LOCKED</span>';
+                }
+            } else {
+                buzzer.classList.add('bg-red-600', 'pulse', 'cursor-pointer');
+                buzzer.innerHTML = '<span class="text-white text-2xl md:text-3xl font-bold">BUZZ NOW!</span>';
+            }
+        }
+
+        // Update timer display
+        function updateTimer() {
+            if (gameState.winner && gameState.players[gameState.winner]) {
+                timer.textContent = gameState.players[gameState.winner].buzzTime.toFixed(3) + 's';
+            } else {
+                timer.textContent = '0.000s';
+            }
         }
 
         // Update game status display
@@ -390,6 +415,7 @@
                 startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 lockBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 adminLoginBtn.innerHTML = '<i class="fas fa-user-cog mr-2"></i>Admin';
+                adminLoginBtn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
                 adminLoginBtn.classList.add('bg-yellow-600', 'hover:bg-yellow-700');
             } else {
                 resetBtn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -401,24 +427,14 @@
             }
         }
 
-        // Register new player
-        function registerPlayer() {
-            const name = playerNameInput.value.trim();
-            if (!name) {
-                alert("Please enter a name!");
-                return;
-            }
-            
-            if (!gameState.players[name]) {
-                gameState.players[name] = {
-                    buzzTime: Infinity,
-                    connected: true
-                };
-                
-                updateConnectedPlayers();
-                alert(`Player "${name}" registered!`);
+        // Update current winner display
+        function updateCurrentWinner() {
+            if (gameState.winner && gameState.players[gameState.winner]) {
+                currentWinner.innerHTML = `
+                    <div class="winner-flash rounded-lg p-2 font-bold">${gameState.winner} - ${gameState.players[gameState.winner].buzzTime.toFixed(3)}s</div>
+                `;
             } else {
-                alert(`Player "${name}" is already registered!`);
+                currentWinner.innerHTML = '<div class="text-gray-300">No winner yet</div>';
             }
         }
 
@@ -426,7 +442,7 @@
         function updateLeaderboard() {
             // Convert players object to array and sort by buzz time
             const playersArray = Object.entries(gameState.players)
-                .filter(([name, data]) => data.buzzTime !== Infinity)
+                .filter(([name, data]) => data.buzzTime !== Infinity && data.buzzTime > 0)
                 .sort((a, b) => a[1].buzzTime - b[1].buzzTime)
                 .slice(0, 5); // Top 5 only
             
@@ -468,33 +484,6 @@
                 playerEl.textContent = player;
                 connectedPlayers.appendChild(playerEl);
             });
-        }
-
-        // Show admin login modal
-        function showAdminLogin() {
-            adminModal.classList.remove('hidden');
-        }
-
-        // Hide admin login modal
-        function hideAdminLogin() {
-            adminModal.classList.add('hidden');
-            adminUsername.value = '';
-            adminPassword.value = '';
-        }
-
-        // Handle admin login
-        function handleAdminLogin() {
-            const username = adminUsername.value.trim();
-            const password = adminPassword.value.trim();
-            
-            if (username === 'Admin' && password === 'Admin@#@#') {
-                gameState.adminLoggedIn = true;
-                hideAdminLogin();
-                updateGameStatus();
-                alert('Admin login successful!');
-            } else {
-                alert('Invalid admin credentials!');
-            }
         }
 
         // Initialize the game when page loads

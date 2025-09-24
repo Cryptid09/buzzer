@@ -19,6 +19,14 @@ let gameState = {
   adminLoggedIn: false
 };
 
+// Function to clear leaderboard (reset all buzz times)
+function clearLeaderboard() {
+  for (const player in gameState.players) {
+    gameState.players[player].buzzTime = Infinity;
+  }
+  gameState.winner = null;
+}
+
 // Socket.IO events
 io.on('connection', (socket) => {
   // Send initial state
@@ -46,6 +54,8 @@ io.on('connection', (socket) => {
   // Start buzzer
   socket.on('start-buzzer', () => {
     if (gameState.adminLoggedIn) {
+      // Clear previous round's results when starting new round
+      clearLeaderboard();
       gameState.buzzersLocked = false;
       gameState.startTime = Date.now();
       io.emit('state', gameState);
@@ -65,6 +75,7 @@ io.on('connection', (socket) => {
     if (gameState.adminLoggedIn) {
       gameState.buzzersLocked = true;
       gameState.winner = null;
+      // Clear leaderboard - reset all buzz times to Infinity
       for (const player in gameState.players) {
         gameState.players[player].buzzTime = Infinity;
       }
@@ -76,22 +87,26 @@ io.on('connection', (socket) => {
   socket.on('buzz', (name) => {
     if (!gameState.buzzersLocked && gameState.startTime && name) {
       const reactionTime = (Date.now() - gameState.startTime) / 1000;
+      
+      // Update or add player with their buzz time
       if (!gameState.players[name]) {
         gameState.players[name] = { buzzTime: reactionTime, connected: true };
-      } else if (reactionTime < gameState.players[name].buzzTime) {
+      } else {
         gameState.players[name].buzzTime = reactionTime;
       }
-      // Determine winner
-      let isWinner = true;
+      
+      // Find the current winner (fastest time)
+      let fastestTime = Infinity;
+      let currentWinner = null;
+      
       for (const player in gameState.players) {
-        if (gameState.players[player].buzzTime < reactionTime) {
-          isWinner = false;
-          break;
+        if (gameState.players[player].buzzTime < fastestTime) {
+          fastestTime = gameState.players[player].buzzTime;
+          currentWinner = player;
         }
       }
-      if (isWinner) {
-        gameState.winner = name;
-      }
+      
+      gameState.winner = currentWinner;
       gameState.buzzersLocked = true;
       io.emit('state', gameState);
     }
@@ -106,4 +121,7 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  // Clear leaderboard on server start/restart
+  clearLeaderboard();
+  console.log('Leaderboard cleared for new session');
 });
