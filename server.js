@@ -16,8 +16,11 @@ let gameState = {
   players: {},
   winner: null,
   startTime: null,
-  adminLoggedIn: false
+  adminLoggedIn: false,
+  leaderboard: [] // Add leaderboard array
 };
+
+let adminSockets = new Set();
 
 // Socket.IO events
 io.on('connection', (socket) => {
@@ -35,6 +38,7 @@ io.on('connection', (socket) => {
   // Admin login
   socket.on('admin-login', ({ username, password }) => {
     if (username === 'Admin' && password === 'Admin@#@#') {
+      adminSockets.add(socket.id);
       gameState.adminLoggedIn = true;
       io.emit('state', gameState);
       socket.emit('admin-login-success');
@@ -45,16 +49,49 @@ io.on('connection', (socket) => {
 
   // Start buzzer
   socket.on('start-buzzer', () => {
-    if (gameState.adminLoggedIn) {
+    if (adminSockets.has(socket.id)) {
       gameState.buzzersLocked = false;
+      gameState.winner = null;
+      for (const player in gameState.players) {
+        gameState.players[player].buzzTime = Infinity;
+        gameState.players[player].locked = false; // unlock all players
+      }
+      gameState.leaderboard = [];
       gameState.startTime = Date.now();
       io.emit('state', gameState);
     }
   });
 
-  // Lock buzzers
+  // Handle buzzer press
+  socket.on('buzz', (name) => {
+    if (!gameState.buzzersLocked && gameState.startTime && name) {
+      // Register player if not already present
+      if (!gameState.players[name]) {
+        gameState.players[name] = { buzzTime: Infinity, connected: true, locked: false };
+      }
+      // If player already buzzed/locked, ignore
+      if (gameState.players[name].locked) return;
+
+      const reactionTime = (Date.now() - gameState.startTime) / 1000;
+      gameState.players[name].buzzTime = reactionTime;
+      gameState.players[name].locked = true;
+
+      // Update leaderboard: remove old entry if exists, then add new
+      gameState.leaderboard = gameState.leaderboard.filter(entry => entry.name !== name);
+      gameState.leaderboard.push({ name, buzzTime: reactionTime });
+
+      // Set winner if not already set (first buzz)
+      if (!gameState.winner) {
+        gameState.winner = name;
+      }
+
+      io.emit('state', gameState);
+    }
+  });
+
+  // Lock buzzers (admin)
   socket.on('lock-buzzers', () => {
-    if (gameState.adminLoggedIn) {
+    if (adminSockets.has(socket.id)) {
       gameState.buzzersLocked = true;
       io.emit('state', gameState);
     }
@@ -62,7 +99,7 @@ io.on('connection', (socket) => {
 
   // Reset buzzers
   socket.on('reset-buzzers', () => {
-    if (gameState.adminLoggedIn) {
+    if (adminSockets.has(socket.id)) {
       gameState.buzzersLocked = true;
       gameState.winner = null;
       for (const player in gameState.players) {
@@ -72,34 +109,13 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle buzzer press
-  socket.on('buzz', (name) => {
-    if (!gameState.buzzersLocked && gameState.startTime && name) {
-      const reactionTime = (Date.now() - gameState.startTime) / 1000;
-      if (!gameState.players[name]) {
-        gameState.players[name] = { buzzTime: reactionTime, connected: true };
-      } else if (reactionTime < gameState.players[name].buzzTime) {
-        gameState.players[name].buzzTime = reactionTime;
-      }
-      // Determine winner
-      let isWinner = true;
-      for (const player in gameState.players) {
-        if (gameState.players[player].buzzTime < reactionTime) {
-          isWinner = false;
-          break;
-        }
-      }
-      if (isWinner) {
-        gameState.winner = name;
-      }
-      gameState.buzzersLocked = true;
-      io.emit('state', gameState);
-    }
-  });
-
   // Disconnect
   socket.on('disconnect', () => {
-    // Optionally handle player disconnects
+    adminSockets.delete(socket.id);
+    if (adminSockets.size === 0) {
+      gameState.adminLoggedIn = false;
+      io.emit('state', gameState);
+    }
   });
 });
 
